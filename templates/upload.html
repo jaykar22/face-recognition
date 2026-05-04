@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Upload Person Photo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}" />
+  </head>
+  <body>
+    <div class="card wide">
+      <h1>Upload Training Photos</h1>
+      <p>Use this page to upload one or more photos for a person.</p>
+
+      <div class="panel">
+        <label for="newPersonName">Add New Person Name</label>
+        <div class="row">
+          <input id="newPersonName" type="text" placeholder="Enter name (e.g. Viraj)" />
+          <button id="addPersonBtn" type="button">Add Person</button>
+        </div>
+      </div>
+
+      <form id="uploadForm" class="panel">
+        <label for="uploadPersonName">Person Name</label>
+        <input id="uploadPersonName" type="text" placeholder="Enter person name for these photos" required />
+        <label for="photoFile">Photo files (.jpg/.jpeg/.png)</label>
+        <input id="photoFile" type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" multiple required />
+        <button type="submit">Upload Photos</button>
+      </form>
+
+      <div id="result" class="result">No upload yet.</div>
+      <p style="margin-top:14px;"><a href="{{ url_for('root') }}">Back to camera page</a></p>
+    </div>
+    <script src="{{ url_for('static', filename='upload.js') }}"></script>
+  </body>
+</html>

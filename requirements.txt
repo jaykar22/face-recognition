@@ -1,0 +1,4 @@
+Flask
+numpy
+face-recognition
+setuptools==70.0.0
