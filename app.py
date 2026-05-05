@@ -1,7 +1,9 @@
 import sqlite3
 from collections import defaultdict
 from datetime import datetime, timezone
+import os
 from pathlib import Path
+import subprocess
 import uuid
 
 from flask import Flask, jsonify, render_template, request
@@ -22,6 +24,7 @@ IDENTIFY_COOLDOWN_SECONDS = 10
 FACE_MATCH_THRESHOLD = 0.48
 FACE_MATCH_MIN_GAP = 0.03
 MATCH_CONFIRMATION_FRAMES = 1
+ENABLE_PI_TTS = os.getenv("ENABLE_PI_TTS", "false").strip().lower() in {"1", "true", "yes", "on"}
 
 _pending_match_name: str | None = None
 _pending_match_count = 0
@@ -42,6 +45,24 @@ def utc_now() -> str:
 
 def face_engine_ready() -> bool:
     return face_recognition is not None
+
+
+def speak_on_pi(text: str) -> None:
+    """Best-effort Raspberry Pi speech output using espeak."""
+    if not ENABLE_PI_TTS:
+        return
+    safe_text = text.strip()
+    if not safe_text:
+        return
+    try:
+        subprocess.Popen(
+            ["espeak", "-s", "145", "-a", "180", safe_text],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        # Avoid blocking recognition if TTS command is unavailable.
+        return
 
 
 def ensure_face_engine() -> tuple | None:
@@ -635,6 +656,7 @@ def identify_photo() -> tuple:
                 is_known = 1
                 confidence = max(0.0, min(1.0, 1.0 - best_distance))
                 message = f"Welcome {resolved_name} to Computer Science Department"
+                speak_on_pi(message)
                 _pending_match_name = None
                 _pending_match_count = 0
         else:
@@ -1039,4 +1061,7 @@ def create_user_interaction(user_id: int) -> tuple:
 init_db()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    host = os.getenv("FLASK_HOST", "0.0.0.0")
+    port = int(os.getenv("FLASK_PORT", "5000"))
+    debug = os.getenv("FLASK_DEBUG", "false").strip().lower() in {"1", "true", "yes", "on"}
+    app.run(host=host, port=port, debug=debug)
