@@ -2,12 +2,15 @@
 
 This guide helps you run the existing Flask + face recognition backend on Raspberry Pi OS (64-bit recommended).
 
-There are **two modes** of operation:
+There are **three modes** of operation:
 
-| Mode | Camera source | Speaker output | When to use |
-|------|--------------|----------------|-------------|
-| **Browser mode** | Laptop/phone webcam via browser | Browser Web Speech API | Testing from another device |
-| **Headless mode** | Pi Camera Module | Speaker via `espeak` | Standalone kiosk / robot |
+| Mode | Backend runs on | Camera source | Speaker output | When to use |
+|------|----------------|--------------|----------------|-------------|
+| **Browser mode** | Pi (local) | Laptop/phone webcam via browser | Browser Web Speech API | Testing from another device |
+| **Headless mode** | Pi (local) | Pi Camera Module | Speaker via `espeak` | Standalone kiosk / robot |
+| **Cloud mode** | Cloud server | Pi Camera Module | Speaker via `espeak` | Production / remote backend |
+
+> For **cloud mode** setup, see [README_CLOUD_PI_WORKFLOW.md](README_CLOUD_PI_WORKFLOW.md).
 
 ---
 
