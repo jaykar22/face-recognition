@@ -29,9 +29,28 @@ This is the recommended flow for your face-recognition robot project.
 
 ## 1) Deploy backend to cloud
 
-Deploy the Flask app to any cloud provider (AWS, DigitalOcean, Railway, Render, etc.).
+### Option A: Render (one-click deploy)
 
-Example with a basic Linux VPS:
+1. Go to [https://render.com](https://render.com) and sign up (free).
+2. Click **New → Web Service**.
+3. Connect your GitHub account and select this repo (`jaykar22/face-recognition`).
+4. Render auto-detects `render.yaml` and configures everything.
+5. Click **Create Web Service**.
+
+Your backend URL will be: `https://face-recognition-backend-XXXX.onrender.com`
+
+> **Note:** Render free tier sleeps after 15 min of inactivity. The first request after sleep takes ~30 seconds. For 24/7 uptime, upgrade to the Starter plan ($7/month) or use a keep-alive ping service.
+
+### Option B: Docker (any cloud provider)
+
+A `Dockerfile` is included for deploying to any provider that supports Docker (AWS, DigitalOcean, Railway, Fly.io, etc.):
+
+```bash
+docker build -t face-recognition .
+docker run -p 5000:5000 -v face-data:/data -e DATA_DIR=/data face-recognition
+```
+
+### Option C: Manual VPS
 
 ```bash
 # On cloud server
@@ -39,14 +58,11 @@ git clone https://github.com/jaykar22/face-recognition.git
 cd face-recognition
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-
-# Run with gunicorn for production
-pip install gunicorn
+pip install -r requirements.txt gunicorn
 gunicorn -w 2 -b 0.0.0.0:5000 app:app
 ```
 
-Verify the backend is running:
+### Verify deployment
 
 ```bash
 curl https://your-cloud-server.com/health

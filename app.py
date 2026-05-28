@@ -17,8 +17,9 @@ except ImportError:
 app = Flask(__name__)
 
 BASE_DIR = Path(__file__).parent
-DB_PATH = BASE_DIR / "project.db"
-KNOWN_FACES_DIR = BASE_DIR / "known_faces"
+DATA_DIR = Path(os.getenv("DATA_DIR", "")) if os.getenv("DATA_DIR") else BASE_DIR
+DB_PATH = DATA_DIR / "project.db"
+KNOWN_FACES_DIR = DATA_DIR / "known_faces"
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
 IDENTIFY_COOLDOWN_SECONDS = 10
 FACE_MATCH_THRESHOLD = 0.48
