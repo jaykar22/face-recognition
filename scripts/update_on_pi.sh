@@ -22,9 +22,15 @@ source .venv/bin/activate
 echo "[3/5] Installing/updating Python dependencies..."
 pip install --upgrade pip
 pip install -r requirements.txt
+if [[ -f requirements-pi.txt ]]; then
+  pip install -r requirements-pi.txt
+fi
 
-echo "[4/5] Restarting service: $SERVICE_NAME ..."
+echo "[4/5] Restarting services: $SERVICE_NAME ..."
 sudo systemctl restart "$SERVICE_NAME"
+if systemctl list-unit-files | grep -q "^${SERVICE_NAME}-camera\.service"; then
+  sudo systemctl restart "${SERVICE_NAME}-camera"
+fi
 
 echo "[5/5] Checking service health with retries..."
 sudo systemctl --no-pager --full status "$SERVICE_NAME" || true

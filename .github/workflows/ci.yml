@@ -24,7 +24,9 @@ jobs:
           pip install Flask numpy
 
       - name: Syntax check
-        run: python -m py_compile app.py
+        run: |
+          python -m py_compile app.py
+          python -m py_compile pi_camera_client.py
 
       - name: Health route smoke test
         run: |
