@@ -1,4 +1,5 @@
 Flask
 numpy
-face-recognition
+Pillow
+Click>=6.0
 setuptools==70.0.0
