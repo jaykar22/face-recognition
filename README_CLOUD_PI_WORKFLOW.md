@@ -1,13 +1,80 @@
-# Cloud + Raspberry Pi Update Workflow
+# Cloud + Raspberry Pi Workflow
 
 This is the recommended flow for your face-recognition robot project.
 
-## 1) Branch strategy
+## Architecture
+
+```
+┌──────────────────────────┐         ┌──────────────────────────┐
+│      Cloud Server        │         │     Raspberry Pi 4B      │
+│                          │  HTTP   │                          │
+│  Flask backend (app.py)  │◄────────│  Pi Camera client        │
+│  SQLite database         │         │  (pi_camera_client.py)   │
+│  Face encodings          │────────►│                          │
+│  Web UI                  │  JSON   │  Speaker (espeak)        │
+│                          │         │  Pi Camera Module        │
+└──────────────────────────┘         └──────────────────────────┘
+```
+
+**Cloud server** handles:
+- Face recognition (encoding, matching)
+- Person database (SQLite)
+- Web UI for managing persons and uploading photos
+- API endpoints (`/api/identify-photo`, `/api/persons`, etc.)
+
+**Raspberry Pi** handles:
+- Capturing frames from Pi Camera Module
+- Sending frames to cloud backend for identification
+- Speaking welcome greetings through the connected speaker
+
+## 1) Deploy backend to cloud
+
+### Option A: Render (one-click deploy)
+
+1. Go to [https://render.com](https://render.com) and sign up (free).
+2. Click **New → Web Service**.
+3. Connect your GitHub account and select this repo (`jaykar22/face-recognition`).
+4. Render auto-detects `render.yaml` and configures everything.
+5. Click **Create Web Service**.
+
+Your backend URL will be: `https://face-recognition-backend-XXXX.onrender.com`
+
+> **Note:** Render free tier sleeps after 15 min of inactivity. The first request after sleep takes ~30 seconds. For 24/7 uptime, upgrade to the Starter plan ($7/month) or use a keep-alive ping service.
+
+### Option B: Docker (any cloud provider)
+
+A `Dockerfile` is included for deploying to any provider that supports Docker (AWS, DigitalOcean, Railway, Fly.io, etc.):
+
+```bash
+docker build -t face-recognition .
+docker run -p 5000:5000 -v face-data:/data -e DATA_DIR=/data face-recognition
+```
+
+### Option C: Manual VPS
+
+```bash
+# On cloud server
+git clone https://github.com/jaykar22/face-recognition.git
+cd face-recognition
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt gunicorn
+gunicorn -w 2 -b 0.0.0.0:5000 app:app
+```
+
+### Verify deployment
+
+```bash
+curl https://your-cloud-server.com/health
+# Should return: {"status":"ok"}
+```
+
+## 2) Branch strategy
 
 - Use `dev` for ongoing changes.
-- Use `main` only for stable code that should run on Raspberry Pi.
+- Use `main` only for stable code.
 
-## 2) GitHub CI
+## 3) GitHub CI
 
 A workflow is added at `.github/workflows/ci.yml`:
 
@@ -17,33 +84,58 @@ A workflow is added at `.github/workflows/ci.yml`:
 
 This ensures basic app correctness before deployment.
 
-## 3) Raspberry Pi deployment
+## 4) Set up Raspberry Pi (camera-only mode)
 
-A script is added at `scripts/update_on_pi.sh`.
-
-It does:
-
-1. `git pull` latest code from branch.
-2. Activates `.venv`.
-3. Installs/updates requirements.
-4. Restarts `face-backend` service.
-5. Calls local health endpoint for quick verification.
-
-## 4) Run update manually on Pi
+On your Pi, clone the repo and run the camera-only setup:
 
 ```bash
-cd /home/pi/Web
-chmod +x scripts/update_on_pi.sh
-./scripts/update_on_pi.sh
+git clone https://github.com/jaykar22/face-recognition.git ~/Web
+cd ~/Web
+chmod +x scripts/pi_camera_only_setup.sh scripts/pi_preflight_check.sh
+BACKEND_URL=https://your-cloud-server.com PROJECT_DIR=$HOME/Web ./scripts/pi_camera_only_setup.sh
 ```
 
-If your branch/service differs:
+This installs only what the Pi needs (picamera2, espeak, requests) and creates a systemd service that:
+1. Captures frames from the Pi Camera Module
+2. Sends them to your cloud backend
+3. Speaks greetings through the speaker when a person is identified
+
+### Verify on Pi
 
 ```bash
-BRANCH=dev SERVICE_NAME=face-backend ./scripts/update_on_pi.sh
+# Check camera
+libcamera-hello --timeout 3000
+
+# Check speaker
+espeak "Hello, this is a test"
+
+# Check service
+systemctl status face-backend-camera
+journalctl -u face-backend-camera -f
 ```
 
-## 5) Auto-deploy from GitHub (added)
+## 5) Register people (from any device)
+
+Open the cloud backend web UI from any browser:
+
+- `https://your-cloud-server.com/` — camera preview (browser mode)
+- `https://your-cloud-server.com/upload` — add person + upload photos
+- `https://your-cloud-server.com/persons` — view registered people
+
+Or use the API directly:
+
+```bash
+# Add person
+curl -X POST https://your-cloud-server.com/api/persons \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Viraj"}'
+
+# Upload photo (person id = 1)
+curl -X POST https://your-cloud-server.com/api/persons/1/photo \
+  -F "photo=@/path/to/viraj.jpg"
+```
+
+## 6) Auto-deploy cloud from GitHub
 
 An auto-deploy workflow is added at `.github/workflows/deploy-pi.yml`.
 
@@ -75,37 +167,35 @@ chmod 600 ~/.ssh/authorized_keys
 
 Paste your GitHub Actions deploy public key into `authorized_keys`.
 
-### What happens on deploy
+## 7) Update Pi camera client remotely
 
-GitHub Actions SSH into Pi and runs:
+When you push code changes that affect `pi_camera_client.py`, update the Pi:
 
 ```bash
-BRANCH=main SERVICE_NAME=face-backend ./scripts/update_on_pi.sh
+# SSH into Pi
+ssh pi@<PI_IP>
+cd ~/Web
+git pull
+sudo systemctl restart face-backend-camera
 ```
 
-The script now includes:
+Or use the existing deploy workflow which handles this automatically.
 
-- automatic health-check retries
-- automatic rollback to previous commit if health fails
+## 8) Full-stack setup (both on Pi)
 
-## 6) One-time Pi bootstrap + preflight (added)
-
-Use these scripts to fully prepare Pi software in one go:
-
-- `scripts/pi_first_setup.sh` (installs packages, creates venv, writes systemd service, starts app)
-- `scripts/pi_preflight_check.sh` (verifies service, TTS, and health)
-
-Run:
+If you prefer to run **everything on the Pi** (no cloud server), use the full setup instead:
 
 ```bash
-cd /home/pi/Web
-chmod +x scripts/pi_first_setup.sh scripts/pi_preflight_check.sh scripts/update_on_pi.sh
-PROJECT_DIR=/home/pi/Web SERVICE_NAME=face-backend ./scripts/pi_first_setup.sh
+cd ~/Web
+PROJECT_DIR=$HOME/Web SERVICE_NAME=face-backend ./scripts/pi_first_setup.sh
 ./scripts/pi_preflight_check.sh
 ```
 
-## 7) Safety recommendation
+This installs the Flask backend + camera client together on the Pi.
+
+## 9) Safety recommendation
 
 - Always deploy from tested `main`.
 - Keep last known working commit tag.
 - Rollback is now automatic if `/health` fails after deploy.
+- For cloud mode, ensure your cloud server has HTTPS enabled.

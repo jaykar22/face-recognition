@@ -32,6 +32,14 @@ PROJECT_DIR=/home/pi/Web SERVICE_NAME=face-backend ./scripts/pi_first_setup.sh
 - [ ] Identify photo via `/api/identify-photo`
 - [ ] Speaker says greeting with detected name
 
+## C2) Pi Camera + Speaker Testing
+
+- [ ] `libcamera-hello --timeout 3000` shows camera preview
+- [ ] `espeak "Hello test"` plays through speaker
+- [ ] `python pi_camera_client.py` captures frames and sends to backend
+- [ ] Known person identified → greeting spoken through speaker
+- [ ] `face-backend-camera` systemd service running
+
 ## D) Deployment Testing
 
 - [ ] Push small code change to `main`
