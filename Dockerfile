@@ -1,14 +1,14 @@
 FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential cmake pkg-config \
-    libatlas-base-dev libjpeg-dev libopenblas-dev liblapack-dev \
+    libatlas3-base libjpeg62-turbo libopenblas0 liblapack3 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && pip install --no-cache-dir --only-binary=:all: dlib \
     && pip install --no-cache-dir -r requirements.txt gunicorn
 
 COPY . .
